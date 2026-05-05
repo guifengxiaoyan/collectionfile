@@ -42,6 +42,10 @@
             <div class="tech-icon"><i class="fas fa-list"></i></div>
             <h3>我的收集对象</h3>
             <div class="tech-line"></div>
+            <div class="collector-panel">
+                <span class="collector-name"><i class="fas fa-user"></i> {{ collection_object.name }}</span>
+                <a href="{{ url_for('collector_logout') }}" class="collector-logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
         </div>
         <div class="objects-grid">
             <a href="{{ url_for('upload_page', object_id=collection_object.id) }}" 

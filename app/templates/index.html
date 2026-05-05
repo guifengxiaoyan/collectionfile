@@ -52,6 +52,12 @@
             <h2>收集主题列表</h2>
             {% endif %}
             <div class="tech-line"></div>
+            {% if collector %}
+            <div class="collector-panel">
+                <span class="collector-name"><i class="fas fa-user"></i> {{ my_object.name }}</span>
+                <a href="{{ url_for('collector_logout') }}" class="collector-logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            </div>
+            {% endif %}
         </div>
         {% if themes %}
         <div class="themes-grid">

@@ -3615,6 +3615,52 @@ small {
     color: var(--warning);
 }
 
+.collector-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    padding-left: 20px;
+    flex-shrink: 0;
+}
+
+.collector-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid var(--secondary);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+.collector-name i {
+    color: var(--secondary);
+}
+
+.collector-logout {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    color: var(--danger);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.collector-logout:hover {
+    background: var(--danger);
+    color: white;
+}
+
 @media (max-width: 768px) {
     .header-nav {
         position: static;
