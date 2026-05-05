@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collection_object.name }} - 文件上传{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if theme.announcement %}
+    <section class="theme-announcement-card">
+        <div class="announcement-glow"></div>
+        <div class="announcement-header">
+            <div class="announcement-icon-wrap">
+                <i class="fas fa-bullhorn"></i>
+            </div>
+            <div class="announcement-title-area">
+                <h3>{{ theme.title }}</h3>
+            </div>
+            <div class="announcement-deadline-badge">
+                <span><i class="fas fa-calendar"></i> 截止时间 {{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+        </div>
+        <div class="announcement-body">
+            <div class="announcement-content">
+                <p>{{ theme.announcement }}</p>
+            </div>
+            {% if theme.attachments %}
+            <div class="announcement-attachments">
+                <i class="fas fa-paperclip"></i>
+                {% for att in theme.attachments %}
+                <a href="{{ url_for('download_theme_attachment', attachment_id=att.id) }}" class="btn-download">
+                    <i class="fas fa-download"></i> {{ att.original_name }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="upload-main-card">
+        <div class="upload-card-header">
+            <div class="upload-user-row">
+                <div class="upload-avatar upload-avatar-sm">
+                    <i class="fas {% if collection_object.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                </div>
+                <h2>{{ collection_object.name }}</h2>
+                {% if expired %}
+                <span class="deadline-remaining" style="color: var(--danger);"><i class="fas fa-clock"></i> 已截止</span>
+                {% else %}
+                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> 剩余时间：{{ theme.deadline|time_remaining }}</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if expired %}
+        <div class="upload-card-body">
+            <div class="completed-section">
+                <div class="completed-icon" style="color: var(--danger);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>该主题已超过截止时间</h3>
+                <p style="color: var(--text-secondary);">无法再上传或修改附件</p>
+            </div>
+        </div>
+        {% elif collection_object.is_completed %}
+        <div class="upload-card-body">
+            <div class="completed-section">
+                <div class="completed-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>您已完成文件上传</h3>
+                <div class="uploaded-files-mini">
+                    <h4><i class="fas fa-file-alt"></i> 已上传附件 ({{ attachments|length }})</h4>
+                    <ul>
+                        {% for att in attachments %}
+                        <li>
+                            <i class="fas fa-file"></i> {{ att.original_name }}
+                            <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="upload-card-body">
+            <form method="POST" enctype="multipart/form-data" id="upload-form">
+                <div class="file-drop-area" id="drop-area">
+                    <input type="file" name="file" id="file-input" multiple accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.png,.jpg,.jpeg,.gif" style="display:none;">
+                    <label for="file-input" class="file-drop-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>点击选择文件或拖拽文件到此处</span>
+                        <small>支持: pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等</small>
+                    </label>
+                </div>
+                <div id="file-list-display" class="file-list-display"></div>
+                <div class="upload-actions">
+                    <div class="upload-btn-wrap">
+                        <button type="submit" class="btn btn-success" id="upload-btn" disabled>
+                            <i class="fas fa-upload"></i> 上传文件
+                        </button>
+                        <span class="upload-hint"><i class="fas fa-info-circle"></i> 选择附件后点击"上传文件"然后再点击"完成上传"确认，或关闭页面自动完成</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if attachments %}
+        <div class="uploaded-files-card">
+            <div class="uploaded-files-header">
+                <h3><i class="fas fa-file-alt"></i> 已上传附件</h3>
+                <span class="file-count">{{ attachments|length }} 个文件</span>
+            </div>
+            <ul class="uploaded-files-list" id="attachment-list">
+                {% for att in attachments %}
+                <li id="att-{{ att.id }}">
+                    <div class="file-info">
+                        <i class="fas fa-file"></i>
+                        <span class="file-name">{{ att.original_name }}</span>
+                    </div>
+                    <div class="file-actions">
+                        <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% if not collection_object.is_completed %}
+                        <button type="button" class="btn btn-danger btn-small" onclick="deleteAttachment({{ att.id }})">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="upload-page-actions">
+            <button type="submit" form="finish-form" name="finish" class="btn btn-primary btn-lg" id="finish-btn" disabled>
+                <i class="fas fa-check"></i> 完成上传
+            </button>
+            <a href="{{ url_for('theme_detail', theme_id=theme.id) }}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-arrow-left"></i> 返回
+            </a>
+        </div>
+        <form method="POST" id="finish-form" style="display:none;"></form>
+    </div>
+</div>
+
+<script>
+var fileInput = document.getElementById('file-input');
+var fileListDisplay = document.getElementById('file-list-display');
+var finishBtn = document.getElementById('finish-btn');
+var attachmentCount = {{ attachments|length }};
+
+fileInput.addEventListener('change', function(e) {
+    updateFileDisplay(this.files);
+});
+
+function updateFileDisplay(files) {
+    if (files.length > 0) {
+        var html = '<div class="selected-files"><h4><i class="fas fa-files"></i> 已选择 ' + files.length + ' 个文件：</h4><ul>';
+        for (var i = 0; i < files.length; i++) {
+            html += '<li><i class="fas fa-file"></i> ' + files[i].name + '</li>';
+        }
+        html += '</ul></div>';
+        fileListDisplay.innerHTML = html;
+        document.getElementById('upload-btn').disabled = false;
+    } else {
+        fileListDisplay.innerHTML = '';
+        document.getElementById('upload-btn').disabled = true;
+    }
+    updateFinishButton();
+}
+
+function updateFinishButton() {
+    var currentAttachments = document.querySelectorAll('#attachment-list li').length;
+    finishBtn.disabled = (attachmentCount === 0 && currentAttachments === 0);
+}
+
+function deleteAttachment(attachmentId) {
+    if (!confirm('确定删除此附件？删除后无法恢复，且将无法完成上传。')) return;
+    
+    fetch('/upload/delete-attachment/' + attachmentId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            var element = document.getElementById('att-' + attachmentId);
+            if (element) {
+                element.remove();
+            }
+            updateFinishButton();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败');
+    });
+}
+
+// Drag and drop
+var dropArea = document.getElementById('drop-area');
+dropArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('drag-over');
+});
+dropArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+});
+dropArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    fileInput.files = e.dataTransfer.files;
+    updateFileDisplay(fileInput.files);
+});
+
+// Auto finish on page close if has attachments
+var formSubmitted = false;
+document.getElementById('finish-form').addEventListener('submit', function() {
+    formSubmitted = true;
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formSubmitted) return;
+    var currentAttachments = document.querySelectorAll('#attachment-list li').length;
+    var totalAttachments = attachmentCount + currentAttachments;
+    if (totalAttachments > 0) {
+        fetch('{{ url_for("upload_page", object_id=collection_object.id) }}', {
+            method: 'POST',
+            body: new URLSearchParams({ 'finish': '1' }),
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            keepalive: true
+        });
+    }
+});
+
+updateFinishButton();
+</script>
+{% endblock %}

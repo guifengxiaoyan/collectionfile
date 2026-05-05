@@ -1,0 +1,12 @@
+node_modules
+package.json
+package-lock.json
+__pycache__/
+*.pyc
+*.pyo
+instance/*.db
+uploads/
+*.egg-info/
+.eggs/
+dist/
+build/
