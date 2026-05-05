@@ -19,6 +19,20 @@
             <div class="circuit-line"></div>
         </div>
         <h1><i class="fas fa-cloud-upload-alt"></i> 文件收集系统</h1>
+        <nav class="header-nav">
+            {% if current_user.is_authenticated %}
+                <span class="user-badge"><i class="fas fa-user-shield"></i> 管理员: {{ current_user.username }}</span>
+                <a href="{{ url_for('admin_objects') }}" class="nav-link"><i class="fas fa-users"></i> 收集对象</a>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link"><i class="fas fa-tachometer-alt"></i> 管理后台</a>
+                <a href="{{ url_for('admin_logout') }}" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            {% elif current_collector %}
+                <span class="user-badge"><i class="fas fa-user"></i> 收集者: {{ current_collector.username }}</span>
+                <a href="{{ url_for('collector_logout') }}" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> 退出</a>
+            {% else %}
+                <a href="{{ url_for('collector_login') }}" class="nav-link"><i class="fas fa-sign-in-alt"></i> 收集者登录</a>
+                <a href="{{ url_for('admin_login') }}" class="nav-link"><i class="fas fa-user-shield"></i> 管理员</a>
+            {% endif %}
+        </nav>
         <div class="header-decoration">
             <span class="deco-dot"></span>
             <span class="deco-dot"></span>

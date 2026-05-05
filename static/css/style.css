@@ -3283,3 +3283,343 @@ footer {
     color: var(--primary);
     font-size: 14px;
 }
+
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid var(--secondary);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.user-badge i {
+    color: var(--secondary);
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    background: var(--primary);
+    color: var(--bg-dark);
+}
+
+.nav-link.logout {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.nav-link.logout:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header i {
+    font-size: 60px;
+    color: var(--primary);
+    margin-bottom: 15px;
+}
+
+.login-header h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.login-form {
+    position: relative;
+    z-index: 1;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.login-footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.login-footer a:hover {
+    text-decoration: underline;
+}
+
+.form-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.form-section h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    color: var(--primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.theme-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.checkbox-label:hover {
+    border-color: var(--primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.checkbox-label span {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.theme-deadline {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.collector-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid var(--secondary);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--secondary);
+}
+
+.collector-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(124, 58, 237, 0.15);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--secondary);
+    margin-left: 8px;
+}
+
+.theme-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--primary);
+    margin-right: 5px;
+}
+
+.objects-table-container {
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.objects-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.objects-table th,
+.objects-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.objects-table th {
+    background: var(--bg-dark);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.objects-table tbody tr:hover {
+    background: var(--bg-card-hover);
+}
+
+.objects-table td:last-child {
+    white-space: nowrap;
+}
+
+.action-cell {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.action-cell .inline-form {
+    display: inline;
+}
+
+.action-cell .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.text-muted {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.collector-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.collector-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.collector-info strong {
+    color: var(--text-primary);
+}
+
+.reset-form {
+    max-width: 400px;
+}
+
+.text-muted {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 13px;
+}
+
+small {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.collector-status {
+    margin-top: 10px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-badge.status-completed {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--success);
+}
+
+.status-badge.status-pending {
+    background: rgba(255, 170, 0, 0.15);
+    color: var(--warning);
+}
+
+@media (max-width: 768px) {
+    .header-nav {
+        position: static;
+        transform: none;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 15px;
+    }
+    
+    .user-badge {
+        width: 100%;
+        justify-content: center;
+    }
+}

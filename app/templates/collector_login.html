@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}收集者登录 - 文件收集系统{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="fas fa-user-circle"></i>
+            <h2>收集者登录</h2>
+            <p>请使用管理员分配的账号登录</p>
+        </div>
+        <form method="POST" class="login-form">
+            <div class="form-group">
+                <label for="username"><i class="fas fa-user"></i> 用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> 密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-sign-in-alt"></i> 登录
+            </button>
+        </form>
+        <div class="login-footer">
+            <a href="{{ url_for('index') }}"><i class="fas fa-arrow-left"></i> 返回首页</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

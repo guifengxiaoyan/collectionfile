@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}创建收集对象 - 文件收集系统{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h2><i class="fas fa-plus-circle"></i> 创建收集对象</h2>
+        <a href="{{ url_for('admin_objects') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> 返回列表
+        </a>
+    </div>
+    
+    <div class="form-card">
+        <form method="POST" class="object-form">
+            <div class="form-section">
+                <h3><i class="fas fa-folder"></i> 收集对象信息</h3>
+                <div class="form-group">
+                    <label for="name">对象名称</label>
+                    <input type="text" id="name" name="name" required placeholder="例如：张三-技术部">
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-user-plus"></i> 创建登录账号</h3>
+                <div class="form-group">
+                    <label for="collector_username">用户名</label>
+                    <input type="text" id="collector_username" name="collector_username" required placeholder="用于收集者登录的用户名">
+                </div>
+                <div class="form-group">
+                    <label for="collector_password">初始密码</label>
+                    <input type="password" id="collector_password" name="collector_password" required placeholder="设置初始登录密码">
+                    <small>密码长度至少6位</small>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-tags"></i> 关联主题</h3>
+                {% if themes %}
+                <div class="theme-checkboxes">
+                    {% for theme in themes %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="theme_ids" value="{{ theme.id }}">
+                        <span>{{ theme.title }}</span>
+                        {% if theme.deadline %}
+                        <span class="theme-deadline">截止: {{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">暂无可用主题，请先创建收集主题</p>
+                {% endif %}
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 创建对象和账号
+                </button>
+                <a href="{{ url_for('admin_objects') }}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

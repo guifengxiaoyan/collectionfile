@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}收集对象管理 - 文件收集系统{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h2><i class="fas fa-users"></i> 收集对象管理</h2>
+        <a href="{{ url_for('admin_create_object') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 新增收集对象
+        </a>
+    </div>
+    
+    {% if objects %}
+    <div class="objects-table-container">
+        <table class="objects-table">
+            <thead>
+                <tr>
+                    <th>对象名称</th>
+                    <th>关联收集者</th>
+                    <th>关联主题</th>
+                    <th>上传状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obj in objects %}
+                <tr>
+                    <td>{{ obj.name }}</td>
+                    <td>
+                        {% if obj.collector %}
+                            <span class="collector-badge">{{ obj.collector.username }}</span>
+                        {% else %}
+                            <span class="text-muted">未分配</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for theme in obj.themes %}
+                            <span class="theme-tag">{{ theme.title }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if obj.has_attachments %}
+                            <span class="status-badge status-completed"><i class="fas fa-check-circle"></i> 已上传</span>
+                        {% else %}
+                            <span class="status-badge status-pending"><i class="fas fa-clock"></i> 待上传</span>
+                        {% endif %}
+                    </td>
+                    <td class="action-cell">
+                        <a href="{{ url_for('upload_page', object_id=obj.id) }}" class="btn btn-sm btn-info" title="上传">
+                            <i class="fas fa-upload"></i>
+                        </a>
+                        <a href="{{ url_for('admin_edit_object', object_id=obj.id) }}" class="btn btn-sm btn-warning" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{{ url_for('admin_collector_reset_password', object_id=obj.id) }}" class="btn btn-sm btn-secondary" title="重置密码">
+                            <i class="fas fa-key"></i>
+                        </a>
+                        {% if obj.has_attachments %}
+                        <a href="{{ url_for('download_object_attachments', object_id=obj.id) }}" class="btn btn-sm btn-success" title="下载附件">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('reset_object_upload', object_id=obj.id) }}" class="inline-form" onsubmit="return confirm('确定要重置该对象的上传状态吗？已上传的附件将被删除。')">
+                            <button type="submit" class="btn btn-sm btn-warning" title="重置上传">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_object', object_id=obj.id) }}" class="inline-form" onsubmit="return confirm('确定要删除该对象吗？此操作不可撤销。')">
+                            <button type="submit" class="btn btn-sm btn-danger" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>暂无收集对象</p>
+        <a href="{{ url_for('admin_create_object') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 创建第一个收集对象
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

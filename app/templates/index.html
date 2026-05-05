@@ -46,7 +46,11 @@
     <section class="themes-section">
         <div class="section-header-tech">
             <div class="tech-icon"><i class="fas fa-folder-open"></i></div>
+            {% if collector %}
+            <h2>我的收集主题</h2>
+            {% else %}
             <h2>收集主题列表</h2>
+            {% endif %}
             <div class="tech-line"></div>
         </div>
         {% if themes %}
@@ -70,7 +74,17 @@
                     {% if theme.collector_name %}
                     <div class="theme-collector"><i class="fas fa-user"></i> 收集人：{{ theme.collector_name }}</div>
                     {% endif %}
-                    {% set incomplete_objs = theme.collection_objects|selectattr('is_completed', 'equalto', False)|list %}
+                    
+                    {% if collector and my_object %}
+                    <div class="collector-status">
+                        {% if my_object.has_attachments %}
+                        <span class="status-badge status-completed"><i class="fas fa-check-circle"></i> 已上传</span>
+                        {% else %}
+                        <span class="status-badge status-pending"><i class="fas fa-clock"></i> 待上传</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    {% set incomplete_objs = theme.objects|rejectattr('has_attachments')|list %}
                     {% if incomplete_objs %}
                     <div class="theme-incomplete-names">
                         <div class="incomplete-label"><i class="fas fa-user-clock"></i> 待上传人员：</div>
@@ -82,9 +96,10 @@
                     </div>
                     {% endif %}
                     <div class="theme-stats">
-                        <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.collection_objects|selectattr('is_completed')|list|length }}</span>
-                        <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.collection_objects|length }} 人</span>
+                        <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.objects|selectattr('has_attachments')|list|length }}</span>
+                        <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.objects|length }} 人</span>
                     </div>
+                    {% endif %}
                 </div>
             </a>
             {% endfor %}
@@ -92,8 +107,12 @@
         {% else %}
         <div class="empty-state">
             <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+            {% if collector %}
+            <p>暂无分配给您的收集主题</p>
+            {% else %}
             <p>暂无收集主题</p>
             <span>等待管理员创建收集主题</span>
+            {% endif %}
         </div>
         {% endif %}
     </section>

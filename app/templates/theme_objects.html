@@ -19,15 +19,15 @@
         <div class="stat-card stat-completed">
             <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
             <div class="stat-content">
-                <span class="stat-value">{{ completed }}</span>
-                <span class="stat-label">已完成</span>
+                <span class="stat-value">{{ objects|selectattr('has_attachments')|list|length }}</span>
+                <span class="stat-label">已上传</span>
             </div>
         </div>
         <div class="stat-card stat-pending">
             <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
             <div class="stat-content">
-                <span class="stat-value">{{ incomplete|length }}</span>
-                <span class="stat-label">未完成</span>
+                <span class="stat-value">{{ objects|rejectattr('has_attachments')|list|length }}</span>
+                <span class="stat-label">未上传</span>
             </div>
         </div>
         <div class="stat-card stat-total">
@@ -39,11 +39,12 @@
         </div>
     </div>
 
-    {% if incomplete %}
+    {% set pending_objs = objects|rejectattr('has_attachments')|list %}
+    {% if pending_objs %}
     <div class="incomplete-list">
-        <h4><i class="fas fa-exclamation-triangle"></i> 未完成的收集对象：</h4>
+        <h4><i class="fas fa-exclamation-triangle"></i> 未上传的收集对象：</h4>
         <ul>
-            {% for obj in incomplete %}
+            {% for obj in pending_objs %}
             <li>{{ obj.name }}</li>
             {% endfor %}
         </ul>
@@ -54,6 +55,9 @@
         <div class="section-header">
             <h3><i class="fas fa-users-cog"></i> 收集对象管理</h3>
             <div class="header-actions">
+                <a href="{{ url_for('admin_create_object') }}" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i> 创建对象+账号
+                </a>
                 <form method="POST" enctype="multipart/form-data" id="import-form">
                     <input type="file" name="excel_file" accept=".xls,.xlsx" id="excel-input" style="display:none;" onchange="submitImportForm()">
                     <label for="excel-input" class="btn btn-secondary" style="cursor:pointer;">
@@ -81,15 +85,18 @@
 
         <div class="objects-grid">
             {% for obj in objects %}
-            <div class="object-item {% if obj.is_completed %}completed{% endif %}">
+            <div class="object-item {% if obj.has_attachments %}completed{% endif %}">
                 <div class="object-name">
-                    <i class="fas {% if obj.is_completed %}fa-user-check{% else %}fa-user{% endif %}"></i>
+                    <i class="fas {% if obj.has_attachments %}fa-user-check{% else %}fa-user{% endif %}"></i>
                     {{ obj.name }}
+                    {% if obj.collector %}
+                    <span class="collector-badge-sm">{{ obj.collector.username }}</span>
+                    {% endif %}
                 </div>
                 <div class="object-status">
-                    {% if obj.is_completed %}
+                    {% if obj.has_attachments %}
                     <span class="status completed">
-                        <i class="fas fa-check"></i> 已完成
+                        <i class="fas fa-check"></i> 已上传
                     </span>
                     <span class="attachment-count"><i class="fas fa-paperclip"></i> {{ obj.attachments|length }}个附件</span>
                     {% else %}
@@ -101,10 +108,10 @@
                 <div class="object-actions">
                     {% if obj.attachments %}
                     <a href="{{ url_for('download_object_attachments', object_id=obj.id) }}" class="btn btn-success btn-small">
-                        <i class="fas fa-download"></i> 下载附件
+                        <i class="fas fa-download"></i> 下载
                     </a>
                     {% endif %}
-                    {% if obj.is_completed %}
+                    {% if obj.has_attachments %}
                     <form method="POST" action="{{ url_for('reset_object_upload', object_id=obj.id) }}" class="inline-form">
                         <button type="submit" class="btn btn-secondary btn-small">
                             <i class="fas fa-redo"></i> 重置
@@ -127,7 +134,7 @@
             <i class="fas fa-download"></i> 导出所有附件
         </a>
         <form method="POST" action="{{ url_for('delete_theme', theme_id=theme.id) }}" class="inline-form">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除此主题？所有收集对象和附件都将被删除！')">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('确定删除此主题？所有关联关系将被删除！')">
                 <i class="fas fa-trash-alt"></i> 删除主题
             </button>
         </form>

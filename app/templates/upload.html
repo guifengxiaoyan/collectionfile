@@ -40,7 +40,7 @@
         <div class="upload-card-header">
             <div class="upload-user-row">
                 <div class="upload-avatar upload-avatar-sm">
-                    <i class="fas {% if collection_object.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                    <i class="fas {% if collection_object.has_attachments %}fa-check-circle{% else %}fa-user{% endif %}"></i>
                 </div>
                 <h2>{{ collection_object.name }}</h2>
                 {% if expired %}
@@ -61,7 +61,7 @@
                 <p style="color: var(--text-secondary);">无法再上传或修改附件</p>
             </div>
         </div>
-        {% elif collection_object.is_completed %}
+        {% elif collection_object.has_attachments %}
         <div class="upload-card-body">
             <div class="completed-section">
                 <div class="completed-icon">
@@ -120,7 +120,7 @@
                     </div>
                     <div class="file-actions">
                         <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                        {% if not collection_object.is_completed %}
+                        {% if not collection_object.has_attachments %}
                         <button type="button" class="btn btn-danger btn-small" onclick="deleteAttachment({{ att.id }})">
                             <i class="fas fa-trash"></i> 删除
                         </button>
@@ -148,7 +148,7 @@
 var fileInput = document.getElementById('file-input');
 var fileListDisplay = document.getElementById('file-list-display');
 var finishBtn = document.getElementById('finish-btn');
-var attachmentCount = {{ attachments|length }};
+var hasInitialAttachments = {{ 'true' if collection_object.has_attachments else 'false' }};
 
 fileInput.addEventListener('change', function(e) {
     updateFileDisplay(this.files);
@@ -171,8 +171,7 @@ function updateFileDisplay(files) {
 }
 
 function updateFinishButton() {
-    var currentAttachments = document.querySelectorAll('#attachment-list li').length;
-    finishBtn.disabled = (attachmentCount === 0 && currentAttachments === 0);
+    finishBtn.disabled = !hasInitialAttachments;
 }
 
 function deleteAttachment(attachmentId) {
@@ -191,6 +190,7 @@ function deleteAttachment(attachmentId) {
             if (element) {
                 element.remove();
             }
+            hasInitialAttachments = document.querySelectorAll('#attachment-list li').length > 0;
             updateFinishButton();
         }
     })
@@ -225,8 +225,7 @@ document.getElementById('finish-form').addEventListener('submit', function() {
 
 window.addEventListener('beforeunload', function(e) {
     if (formSubmitted) return;
-    var currentAttachments = document.querySelectorAll('#attachment-list li').length;
-    var totalAttachments = attachmentCount + currentAttachments;
+    var totalAttachments = document.querySelectorAll('#attachment-list li').length;
     if (totalAttachments > 0) {
         fetch('{{ url_for("upload_page", object_id=collection_object.id) }}', {
             method: 'POST',

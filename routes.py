@@ -1,10 +1,11 @@
 import os
 from datetime import datetime
+from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
+from models import db, Admin, Collector, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, ThemeObject, beijing_now, collector_login_manager
 from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
@@ -54,11 +55,25 @@ def register_routes(app):
     def inject_now():
         return {'now': beijing_now()}
 
+    def collector_login_required(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'collector_id' not in session:
+                return redirect(url_for('collector_login', next=request.url))
+            return f(*args, **kwargs)
+        return decorated_function
+
+    @app.context_processor
+    def inject_collector():
+        collector = None
+        if 'collector_id' in session:
+            collector = Collector.query.get(session['collector_id'])
+        return {'current_collector': collector}
+
     @app.route('/')
     def index():
         announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
         now = beijing_now()
-        # 自动归档已过期的主题
         expired_themes = CollectionTheme.query.filter(
             CollectionTheme.is_active == True,
             CollectionTheme.deadline < now
@@ -68,25 +83,80 @@ def register_routes(app):
         if expired_themes:
             db.session.commit()
         
+        if 'collector_id' in session:
+            collector = Collector.query.get(session['collector_id'])
+            if collector and collector.collection_object:
+                obj = collector.collection_object
+                themes = CollectionTheme.query.filter(
+                    CollectionTheme.is_active == True,
+                    CollectionTheme.id.in_(
+                        db.session.query(ThemeObject.theme_id).filter_by(object_id=obj.id)
+                    )
+                ).order_by(CollectionTheme.deadline.asc()).all()
+                return render_template('index.html', announcements=announcements, themes=themes, collector=collector, my_object=obj)
+        
         themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.deadline.asc()).all()
         return render_template('index.html', announcements=announcements, themes=themes)
 
+    @app.route('/collector/login', methods=['GET', 'POST'])
+    def collector_login():
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            collector = Collector.query.filter_by(username=username).first()
+            if collector and collector.check_password(password):
+                session['collector_id'] = collector.id
+                next_url = request.args.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect(url_for('index'))
+            flash('用户名或密码错误', 'error')
+        return render_template('collector_login.html')
+
+    @app.route('/collector/logout')
+    def collector_logout():
+        session.pop('collector_id', None)
+        return redirect(url_for('index'))
+
     @app.route('/theme/<int:theme_id>')
+    @collector_login_required
     def theme_detail(theme_id):
         theme = CollectionTheme.query.get_or_404(theme_id)
-        objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
-        completed = sum(1 for obj in objects if obj.is_completed)
-        incomplete = [obj for obj in objects if not obj.is_completed]
-        return render_template('theme_detail.html', theme=theme, objects=objects, 
-                             completed=completed, incomplete=incomplete)
+        collector = Collector.query.get(session['collector_id'])
+        obj = collector.collection_object if collector else None
+        
+        if obj:
+            theme_obj = ThemeObject.query.filter_by(theme_id=theme_id, object_id=obj.id).first()
+            if not theme_obj:
+                flash('您无权访问此主题', 'error')
+                return redirect(url_for('index'))
+            
+            attachments = Attachment.query.filter_by(collection_object_id=obj.id).all()
+            is_completed = len(attachments) > 0
+            return render_template('theme_detail.html', theme=theme, collection_object=obj, 
+                                 attachments=attachments, is_completed=is_completed)
+        
+        objects = CollectionTheme.query.get(theme_id).objects
+        return render_template('theme_detail.html', theme=theme, objects=objects)
 
     @app.route('/upload/<int:object_id>', methods=['GET', 'POST'])
+    @collector_login_required
     def upload_page(object_id):
         collection_object = CollectionObject.query.get_or_404(object_id)
-        theme = collection_object.theme
-        now = beijing_now()
+        collector = Collector.query.get(session['collector_id'])
         
-        # 检查主题是否已过期（处理时区问题）
+        if collector and collection_object.collector_id != collector.id:
+            flash('您无权上传到此对象', 'error')
+            return redirect(url_for('index'))
+        
+        theme_link = ThemeObject.query.filter_by(object_id=object_id).first()
+        theme = theme_link.theme if theme_link else None
+        
+        if not theme:
+            flash('该对象未关联主题', 'error')
+            return redirect(url_for('index'))
+        
+        now = beijing_now()
         deadline = theme.deadline
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=now.tzinfo)
@@ -96,19 +166,18 @@ def register_routes(app):
             if request.method == 'POST':
                 flash('该主题已超过截止时间，无法上传附件', 'error')
                 return redirect(url_for('index'))
-            # GET 请求时显示过期提示
             return render_template('upload.html', theme=theme, collection_object=collection_object, expired=True)
         
         if request.method == 'POST':
             if 'finish' in request.form:
-                if collection_object.is_completed:
-                    return redirect(url_for('index'))
                 attachments = Attachment.query.filter_by(collection_object_id=object_id).all()
                 if len(attachments) == 0:
                     flash('请先上传附件后再完成', 'error')
                     return redirect(url_for('upload_page', object_id=object_id))
-                collection_object.is_completed = True
-                collection_object.completed_at = beijing_now()
+                
+                for to in ThemeObject.query.filter_by(object_id=object_id).all():
+                    to.is_completed = True
+                    to.completed_at = beijing_now()
                 db.session.commit()
                 return redirect(url_for('index'))
             
@@ -136,11 +205,15 @@ def register_routes(app):
         return render_template('upload.html', collection_object=collection_object, theme=theme, attachments=attachments)
 
     @app.route('/download/attachment/<int:attachment_id>')
-    @login_required
+    @collector_login_required
     def download_attachment(attachment_id):
         attachment = Attachment.query.get_or_404(attachment_id)
         obj = attachment.collection_object
-        file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), attachment.filename)
+        collector = Collector.query.get(session['collector_id'])
+        if obj.collector_id != collector.id:
+            flash('无权下载', 'error')
+            return redirect(url_for('index'))
+        file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), attachment.filename)
         return send_file(file_path, as_attachment=True, download_name=attachment.original_name)
 
     @app.route('/announcement/download/<int:attachment_id>')
@@ -156,10 +229,14 @@ def register_routes(app):
         return send_file(file_path, as_attachment=True, download_name=attachment.original_name)
 
     @app.route('/upload/delete-attachment/<int:attachment_id>', methods=['POST'])
+    @collector_login_required
     def delete_upload_attachment(attachment_id):
         attachment = Attachment.query.get_or_404(attachment_id)
         obj = attachment.collection_object
-        file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), attachment.filename)
+        collector = Collector.query.get(session['collector_id'])
+        if obj.collector_id != collector.id:
+            return jsonify({'success': False, 'error': '无权删除'}), 403
+        file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), attachment.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
         db.session.delete(attachment)
@@ -201,7 +278,6 @@ def register_routes(app):
     @login_required
     def admin_dashboard():
         now = beijing_now()
-        # 自动归档已过期的主题
         expired_themes = CollectionTheme.query.filter(
             CollectionTheme.is_active == True,
             CollectionTheme.deadline < now
@@ -252,7 +328,6 @@ def register_routes(app):
             announcement = request.form.get('announcement')
             deadline = request.form.get('deadline')
             collector_name = request.form.get('collector_name')
-            collector_objects_text = request.form.get('collector_objects', '')
             
             theme = CollectionTheme(
                 title=title,
@@ -263,31 +338,6 @@ def register_routes(app):
             )
             db.session.add(theme)
             db.session.commit()
-            
-            # 处理文本输入的收集对象
-            if collector_objects_text.strip():
-                object_names = collector_objects_text.strip().split('\n')
-                for name in object_names:
-                    name = name.strip()
-                    if name:
-                        obj = CollectionObject(name=name, theme_id=theme.id)
-                        db.session.add(obj)
-            
-            # 处理Excel导入的收集对象
-            if 'objects_excel_file' in request.files:
-                file = request.files.get('objects_excel_file')
-                if file and file.filename and file.filename.endswith(('.xls', '.xlsx')):
-                    file.seek(0)
-                    wb = openpyxl.load_workbook(file)
-                    ws = wb.active
-                    for row in ws.iter_rows(values_only=True):
-                        if row and len(row) > 0:
-                            cell = row[0]
-                            if cell is not None:
-                                name = str(cell).strip()
-                                if name:
-                                    obj = CollectionObject(name=name, theme_id=theme.id)
-                                    db.session.add(obj)
             
             if 'attachments' in request.files:
                 import json
@@ -326,6 +376,103 @@ def register_routes(app):
             return redirect(url_for('admin_dashboard'))
         return render_template('theme_create.html')
 
+    @app.route('/admin/objects')
+    @login_required
+    def admin_objects():
+        objects = CollectionObject.query.all()
+        return render_template('admin_objects.html', objects=objects)
+
+    @app.route('/admin/object/create', methods=['GET', 'POST'])
+    @login_required
+    def admin_create_object():
+        if request.method == 'POST':
+            name = request.form.get('name')
+            collector_username = request.form.get('collector_username')
+            collector_password = request.form.get('collector_password')
+            theme_ids = request.form.getlist('theme_ids')
+            
+            existing = CollectionObject.query.filter_by(name=name).first()
+            if existing:
+                flash('收集对象名称已存在', 'error')
+                return redirect(url_for('admin_create_object'))
+            
+            collector = Collector.query.filter_by(username=collector_username).first()
+            if collector:
+                flash('收集者用户名已存在', 'error')
+                return redirect(url_for('admin_create_object'))
+            
+            collector = Collector(username=collector_username)
+            collector.set_password(collector_password)
+            db.session.add(collector)
+            db.session.flush()
+            
+            obj = CollectionObject(name=name, collector_id=collector.id)
+            db.session.add(obj)
+            db.session.flush()
+            
+            for tid in theme_ids:
+                if tid:
+                    theme_obj = ThemeObject(theme_id=int(tid), object_id=obj.id)
+                    db.session.add(theme_obj)
+            
+            db.session.commit()
+            flash(f'收集对象和账号创建成功，用户名: {collector_username}', 'success')
+            return redirect(url_for('admin_objects'))
+        
+        themes = CollectionTheme.query.filter_by(is_active=True).all()
+        return render_template('admin_object_create.html', themes=themes)
+
+    @app.route('/admin/object/<int:object_id>/edit', methods=['GET', 'POST'])
+    @login_required
+    def admin_edit_object(object_id):
+        obj = CollectionObject.query.get_or_404(object_id)
+        collector = obj.collector
+        
+        if request.method == 'POST':
+            obj.name = request.form.get('name')
+            theme_ids = request.form.getlist('theme_ids')
+            
+            ThemeObject.query.filter_by(object_id=object_id).delete()
+            for tid in theme_ids:
+                if tid:
+                    theme_obj = ThemeObject(theme_id=int(tid), object_id=object_id)
+                    db.session.add(theme_obj)
+            
+            if request.form.get('reset_password'):
+                new_password = request.form.get('new_password')
+                if new_password and len(new_password) >= 6:
+                    collector.set_password(new_password)
+            
+            db.session.commit()
+            flash('收集对象已更新', 'success')
+            return redirect(url_for('admin_objects'))
+        
+        themes = CollectionTheme.query.filter_by(is_active=True).all()
+        return render_template('admin_object_edit.html', obj=obj, collector=collector, themes=themes)
+
+    @app.route('/admin/object/<int:object_id>/reset-password', methods=['GET', 'POST'])
+    @login_required
+    def admin_collector_reset_password(object_id):
+        obj = CollectionObject.query.get_or_404(object_id)
+        collector = obj.collector
+        
+        if not collector:
+            flash('该对象没有关联的收集者账号', 'error')
+            return redirect(url_for('admin_objects'))
+        
+        if request.method == 'POST':
+            new_password = request.form.get('new_password')
+            if len(new_password) < 6:
+                flash('密码长度不能少于6位', 'error')
+                return redirect(url_for('admin_collector_reset_password', object_id=object_id))
+            
+            collector.set_password(new_password)
+            db.session.commit()
+            flash(f'密码已重置，用户名: {collector.username}，新密码: {new_password}', 'success')
+            return redirect(url_for('admin_objects'))
+        
+        return render_template('admin_collector_reset_password.html', collector=collector, obj=obj)
+
     @app.route('/admin/theme/<int:theme_id>/objects', methods=['GET', 'POST'])
     @login_required
     def manage_theme_objects(theme_id):
@@ -334,8 +481,12 @@ def register_routes(app):
         if request.method == 'POST':
             if 'add_object' in request.form:
                 name = request.form.get('object_name')
-                obj = CollectionObject(name=name, theme_id=theme_id)
+                obj = CollectionObject(name=name)
                 db.session.add(obj)
+                db.session.flush()
+                
+                theme_obj = ThemeObject(theme_id=theme_id, object_id=obj.id)
+                db.session.add(theme_obj)
                 db.session.commit()
                 flash('收集对象添加成功', 'success')
             
@@ -352,20 +503,19 @@ def register_routes(app):
                                 if cell is not None:
                                     name = str(cell).strip()
                                     if name:
-                                        existing = CollectionObject.query.filter_by(name=name, theme_id=theme_id).first()
+                                        existing = CollectionObject.query.filter_by(name=name).first()
                                         if not existing:
-                                            obj = CollectionObject(name=name, theme_id=theme_id)
+                                            obj = CollectionObject(name=name)
                                             db.session.add(obj)
+                                            db.session.flush()
+                                            theme_obj = ThemeObject(theme_id=theme_id, object_id=obj.id)
+                                            db.session.add(theme_obj)
                                             imported_count += 1
                         db.session.commit()
                         flash(f'Excel导入成功，共导入 {imported_count} 条数据', 'success')
         
-        objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
-        completed = sum(1 for obj in objects if obj.is_completed)
-        incomplete = [obj for obj in objects if not obj.is_completed]
-        
-        return render_template('theme_objects.html', theme=theme, objects=objects, 
-                             completed=completed, incomplete=incomplete)
+        objects = theme.objects
+        return render_template('theme_objects.html', theme=theme, objects=objects)
 
     @app.route('/admin/theme/<int:theme_id>/delete', methods=['POST'])
     @login_required
@@ -384,10 +534,12 @@ def register_routes(app):
     @login_required
     def delete_object(object_id):
         obj = CollectionObject.query.get_or_404(object_id)
+        if obj.collector:
+            db.session.delete(obj.collector)
         db.session.delete(obj)
         db.session.commit()
         flash('收集对象已删除', 'success')
-        return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
+        return redirect(url_for('admin_objects'))
 
     @app.route('/admin/object/<int:object_id>/reset', methods=['POST'])
     @login_required
@@ -395,30 +547,29 @@ def register_routes(app):
         obj = CollectionObject.query.get_or_404(object_id)
         attachments = Attachment.query.filter_by(collection_object_id=object_id).all()
         for att in attachments:
-            file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+            file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), att.filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
             db.session.delete(att)
-        obj.is_completed = False
-        obj.completed_at = None
+        for to in ThemeObject.query.filter_by(object_id=object_id).all():
+            to.is_completed = False
+            to.completed_at = None
         db.session.commit()
         flash('上传已重置，可以重新上传', 'success')
-        return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
+        return redirect(url_for('admin_objects'))
 
     @app.route('/admin/attachment/<int:attachment_id>/delete', methods=['POST'])
     @login_required
     def delete_attachment(attachment_id):
         att = Attachment.query.get_or_404(attachment_id)
         obj = att.collection_object
-        file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+        file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), att.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
         db.session.delete(att)
         db.session.commit()
         flash('附件已删除', 'success')
-        if request.referrer and 'object_id' in request.referrer:
-            return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
-        return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
+        return redirect(url_for('admin_objects'))
 
     @app.route('/admin/object/<int:object_id>/download-attachments')
     @login_required
@@ -427,11 +578,11 @@ def register_routes(app):
         attachments = Attachment.query.filter_by(collection_object_id=object_id).all()
         if not attachments:
             flash('该对象没有附件', 'error')
-            return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
+            return redirect(url_for('admin_objects'))
         
         if len(attachments) == 1:
             att = attachments[0]
-            file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+            file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), att.filename)
             ext = os.path.splitext(att.original_name)[1]
             download_name = f"{obj.name}{ext}"
             return send_file(file_path, as_attachment=True, download_name=download_name)
@@ -441,7 +592,7 @@ def register_routes(app):
             memory_file = io.BytesIO()
             with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for att in attachments:
-                    file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+                    file_path = os.path.join(get_object_folder(obj.theme_links.first().theme_id if obj.theme_links.first() else 0, obj.id), att.filename)
                     if os.path.exists(file_path):
                         zf.write(file_path, f"{obj.name}_{att.original_name}")
             memory_file.seek(0)

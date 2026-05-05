@@ -36,6 +36,31 @@
         {% endif %}
     </section>
 
+    {% if collection_object %}
+    <section class="objects-section">
+        <div class="section-header-tech">
+            <div class="tech-icon"><i class="fas fa-list"></i></div>
+            <h3>我的收集对象</h3>
+            <div class="tech-line"></div>
+        </div>
+        <div class="objects-grid">
+            <a href="{{ url_for('upload_page', object_id=collection_object.id) }}" 
+               class="object-item {% if is_completed %}completed{% endif %}">
+                <div class="object-top">
+                    <i class="fas {% if is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                </div>
+                <div class="object-name">{{ collection_object.name }}</div>
+                <div class="object-status">
+                    {% if is_completed %}
+                    <span class="status-completed"><i class="fas fa-check"></i> 已上传</span>
+                    {% else %}
+                    <span class="status-pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+    </section>
+    {% elif objects %}
     <section class="objects-section">
         <div class="section-header-tech">
             <div class="tech-icon"><i class="fas fa-list"></i></div>
@@ -50,14 +75,14 @@
         <div class="objects-grid">
             {% for obj in objects %}
             <a href="{{ url_for('upload_page', object_id=obj.id) }}" 
-               class="object-item {% if obj.is_completed %}completed{% endif %}">
+               class="object-item {% if obj.has_attachments %}completed{% endif %}">
                 <div class="object-top">
-                    <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                    <i class="fas {% if obj.has_attachments %}fa-check-circle{% else %}fa-user{% endif %}"></i>
                 </div>
                 <div class="object-name">{{ obj.name }}</div>
                 <div class="object-status">
-                    {% if obj.is_completed %}
-                    <span class="status-completed"><i class="fas fa-check"></i> 已完成</span>
+                    {% if obj.has_attachments %}
+                    <span class="status-completed"><i class="fas fa-check"></i> 已上传</span>
                     {% else %}
                     <span class="status-pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
                     {% endif %}
@@ -71,14 +96,14 @@
         <div class="stat-card stat-completed">
             <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
             <div class="stat-content">
-                <span class="stat-value">{{ completed }}</span>
+                <span class="stat-value">{{ objects|selectattr('has_attachments')|list|length }}</span>
                 <span class="stat-label">已完成</span>
             </div>
         </div>
         <div class="stat-card stat-pending">
             <div class="stat-icon"><i class="fas fa-clock"></i></div>
             <div class="stat-content">
-                <span class="stat-value">{{ incomplete|length }}</span>
+                <span class="stat-value">{{ objects|rejectattr('has_attachments')|list|length }}</span>
                 <span class="stat-label">未完成</span>
             </div>
         </div>
@@ -89,16 +114,6 @@
                 <span class="stat-label">总计</span>
             </div>
         </div>
-    </div>
-
-    {% if incomplete %}
-    <div class="incomplete-list">
-        <h4><i class="fas fa-exclamation-triangle"></i> 未完成的收集对象</h4>
-        <ul>
-            {% for obj in incomplete %}
-            <li>{{ obj.name }}</li>
-            {% endfor %}
-        </ul>
     </div>
     {% endif %}
 

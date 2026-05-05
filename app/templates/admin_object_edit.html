@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}编辑收集对象 - 文件收集系统{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h2><i class="fas fa-edit"></i> 编辑收集对象</h2>
+        <a href="{{ url_for('admin_objects') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> 返回列表
+        </a>
+    </div>
+    
+    <div class="form-card">
+        <form method="POST" class="object-form">
+            <div class="form-section">
+                <h3><i class="fas fa-folder"></i> 收集对象信息</h3>
+                <div class="form-group">
+                    <label for="name">对象名称</label>
+                    <input type="text" id="name" name="name" value="{{ obj.name }}" required>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> 关联账号</h3>
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" value="{{ collector.username }}" disabled>
+                    <small>用户名不可修改</small>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-tags"></i> 关联主题</h3>
+                {% if themes %}
+                <div class="theme-checkboxes">
+                    {% for theme in themes %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="theme_ids" value="{{ theme.id }}"
+                               {% if theme in obj.themes %}checked{% endif %}>
+                        <span>{{ theme.title }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">暂无可用主题</p>
+                {% endif %}
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存修改
+                </button>
+                <a href="{{ url_for('admin_objects') }}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
