@@ -169,11 +169,14 @@ header {
     background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 14, 23, 0.95) 100%);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-color);
-    padding: 25px 0;
+    padding: 25px 40px;
     position: sticky;
     top: 0;
     z-index: 1000;
     overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
 }
 
 .header-bg {
@@ -210,11 +213,13 @@ header h1 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-align: center;
     letter-spacing: 3px;
     text-transform: uppercase;
     position: relative;
     z-index: 1;
+    margin: 0;
+    grid-column: 2;
+    text-align: center;
 }
 
 .header-decoration {
@@ -241,6 +246,16 @@ header h1 {
 @keyframes decoPulse {
     0%, 100% { opacity: 0.3; transform: scale(1); }
     50% { opacity: 1; transform: scale(1.2); }
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+    z-index: 2;
+    grid-column: 3;
+    justify-self: end;
 }
 
 main {
@@ -1164,6 +1179,8 @@ main {
     border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
+    margin: 60px auto;
+    display: block;
 }
 
 .login-container::before {
@@ -3282,17 +3299,6 @@ footer {
 .theme-announcement-card .announcement-attachments i {
     color: var(--primary);
     font-size: 14px;
-}
-
-.header-nav {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
 }
 
 .user-badge {
