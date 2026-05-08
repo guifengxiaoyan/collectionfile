@@ -47,6 +47,25 @@
                 <span>{{ theme.deadline|time_remaining }}</span>
             </div>
         </div>
+
+        {% if user_object %}
+        <div class="objects-grid objects-grid-single">
+            <a href="{{ url_for('upload_page', object_id=user_object.id) }}" 
+               class="object-item {% if user_object.is_completed %}completed{% endif %}">
+                <div class="object-top">
+                    <i class="fas {% if user_object.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                </div>
+                <div class="object-name">{{ user_object.name }}</div>
+                <div class="object-status">
+                    {% if user_object.is_completed %}
+                    <span class="status-completed"><i class="fas fa-check"></i> 已完成</span>
+                    {% else %}
+                    <span class="status-pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+        {% elif objects %}
         <div class="objects-grid">
             {% for obj in objects %}
             <a href="{{ url_for('upload_page', object_id=obj.id) }}" 
@@ -65,8 +84,29 @@
             </a>
             {% endfor %}
         </div>
+        {% elif current_user.is_authenticated %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-user-slash"></i></div>
+            <p>暂无关联的收集对象</p>
+            <span>请联系管理员为您分配收集对象</span>
+        </div>
+        {% else %}
+        <div class="login-prompt">
+            <div class="login-prompt-card">
+                <div class="login-prompt-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>登录后查看您的收集对象</h3>
+                <p>请使用管理员分配的账号和密码登录以上传文件</p>
+                <a href="{{ url_for('user_login', next=request.path) }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> 立即登录
+                </a>
+            </div>
+        </div>
+        {% endif %}
     </section>
 
+    {% if current_user.is_authenticated and current_user.__class__.__name__ == 'Admin' %}
     <div class="stats-summary">
         <div class="stat-card stat-completed">
             <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
@@ -101,11 +141,17 @@
         </ul>
     </div>
     {% endif %}
+    {% endif %}
 
     <div class="page-actions">
         <a href="{{ url_for('index') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> 返回首页
         </a>
+        {% if not current_user or current_user.__class__.__name__ != 'Admin' %}
+        <a href="{{ url_for('user_logout') }}" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt"></i> 退出登录
+        </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

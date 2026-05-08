@@ -30,9 +30,23 @@
             <label><i class="fas fa-user"></i> 收集人</label>
             <input type="text" name="collector_name" id="collector_name" placeholder="输入收集人姓名（可选）">
         </div>
+        {% if targets %}
         <div class="form-group">
-            <label><i class="fas fa-users"></i> 收集对象（一行一个）</label>
-            <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="从粘贴板粘贴多个收集对象名称，一行一个，例如：
+            <label><i class="fas fa-users"></i> 勾选已有收集对象（可多选）</label>
+            <div class="target-checkbox-grid">
+                {% for target in targets %}
+                <label class="target-checkbox">
+                    <input type="checkbox" name="target_ids" value="{{ target.id }}">
+                    <span>{{ target.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <div id="selected-targets-count" style="margin-top: 8px; color: var(--primary); font-size: 13px;"></div>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label><i class="fas fa-users"></i> 手动添加收集对象（一行一个）</label>
+            <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="手动输入新的收集对象名称，一行一个，例如：
 张三
 李四
 王五"></textarea>
@@ -243,5 +257,19 @@ function ensureXlsxLoaded(callback) {
 }
 
 window.addEventListener('load', updateObjectsCount);
+
+function updateSelectedTargetsCount() {
+    var checkboxes = document.querySelectorAll('input[name="target_ids"]:checked');
+    var countDiv = document.getElementById('selected-targets-count');
+    if (countDiv) {
+        countDiv.textContent = '已选择 ' + checkboxes.length + ' 个收集对象';
+    }
+}
+
+document.querySelectorAll('input[name="target_ids"]').forEach(function(cb) {
+    cb.addEventListener('change', updateSelectedTargetsCount);
+});
+
+window.addEventListener('load', updateSelectedTargetsCount);
 </script>
 {% endblock %}

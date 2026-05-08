@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
+from models import db, Admin, User, CollectionTarget, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
 from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
@@ -74,15 +74,36 @@ def register_routes(app):
     @app.route('/theme/<int:theme_id>')
     def theme_detail(theme_id):
         theme = CollectionTheme.query.get_or_404(theme_id)
-        objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
+        
+        if current_user.is_authenticated:
+            if isinstance(current_user, User):
+                objects = CollectionObject.query.filter_by(theme_id=theme_id, target_id=current_user.target_id).all()
+                user_object = objects[0] if objects else None
+            elif isinstance(current_user, Admin):
+                objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
+                user_object = None
+            else:
+                objects = []
+                user_object = None
+        else:
+            objects = []
+            user_object = None
+        
         completed = sum(1 for obj in objects if obj.is_completed)
         incomplete = [obj for obj in objects if not obj.is_completed]
         return render_template('theme_detail.html', theme=theme, objects=objects, 
-                             completed=completed, incomplete=incomplete)
+                             completed=completed, incomplete=incomplete, user_object=user_object)
 
     @app.route('/upload/<int:object_id>', methods=['GET', 'POST'])
+    @login_required
     def upload_page(object_id):
         collection_object = CollectionObject.query.get_or_404(object_id)
+        
+        if isinstance(current_user, User):
+            if collection_object.target_id != current_user.target_id:
+                flash('您没有权限访问此上传页面', 'error')
+                return redirect(url_for('index'))
+        
         theme = collection_object.theme
         now = beijing_now()
         
@@ -197,6 +218,83 @@ def register_routes(app):
         logout_user()
         return redirect(url_for('index'))
 
+    @app.route('/login', methods=['GET', 'POST'])
+    def user_login():
+        if request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                login_user(user)
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
+                return redirect(url_for('index'))
+            flash('用户名或密码错误', 'error')
+        return render_template('user_login.html')
+
+    @app.route('/logout')
+    @login_required
+    def user_logout():
+        logout_user()
+        return redirect(url_for('index'))
+
+    @app.route('/admin/targets', methods=['GET', 'POST'])
+    @login_required
+    def manage_targets():
+        if request.method == 'POST':
+            if 'add_user' in request.form:
+                username = request.form.get('new_username')
+                password = request.form.get('new_password')
+                confirm_password = request.form.get('confirm_password')
+                target_name = request.form.get('target_name', '').strip()
+
+                if not username or not password:
+                    flash('用户名和密码不能为空', 'error')
+                elif password != confirm_password:
+                    flash('两次输入的密码不一致', 'error')
+                elif len(password) < 6:
+                    flash('密码长度不能少于6位', 'error')
+                elif User.query.filter_by(username=username).first():
+                    flash('用户名已存在', 'error')
+                elif not target_name:
+                    flash('收集对象名称不能为空', 'error')
+                else:
+                    target = CollectionTarget.query.filter_by(name=target_name).first()
+                    if not target:
+                        target = CollectionTarget(name=target_name)
+                        db.session.add(target)
+                        db.session.commit()
+
+                    user = User(username=username, target_id=target.id)
+                    user.set_password(password)
+                    db.session.add(user)
+                    db.session.commit()
+                    flash(f'用户创建成功，收集对象「{target_name}」已自动关联', 'success')
+
+            elif 'delete_user' in request.form:
+                user_id = request.form.get('user_id')
+                user = User.query.get(int(user_id))
+                if user:
+                    db.session.delete(user)
+                    db.session.commit()
+                    flash('用户已删除', 'success')
+
+            elif 'reset_user_password' in request.form:
+                user_id = request.form.get('user_id')
+                new_password = request.form.get('new_password')
+                user = User.query.get(int(user_id))
+                if user:
+                    if len(new_password) < 6:
+                        flash('密码长度不能少于6位', 'error')
+                    else:
+                        user.set_password(new_password)
+                        db.session.commit()
+                        flash('密码重置成功', 'success')
+
+        users = User.query.order_by(User.username).all()
+        return render_template('targets_manage.html', users=users)
+
     @app.route('/admin')
     @login_required
     def admin_dashboard():
@@ -253,6 +351,7 @@ def register_routes(app):
             deadline = request.form.get('deadline')
             collector_name = request.form.get('collector_name')
             collector_objects_text = request.form.get('collector_objects', '')
+            selected_target_ids = request.form.getlist('target_ids')
             
             theme = CollectionTheme(
                 title=title,
@@ -264,7 +363,12 @@ def register_routes(app):
             db.session.add(theme)
             db.session.commit()
             
-            # 处理文本输入的收集对象
+            for target_id in selected_target_ids:
+                target = CollectionTarget.query.get(int(target_id))
+                if target:
+                    obj = CollectionObject(name=target.name, theme_id=theme.id, target_id=target.id)
+                    db.session.add(obj)
+            
             if collector_objects_text.strip():
                 object_names = collector_objects_text.strip().split('\n')
                 for name in object_names:
@@ -273,7 +377,6 @@ def register_routes(app):
                         obj = CollectionObject(name=name, theme_id=theme.id)
                         db.session.add(obj)
             
-            # 处理Excel导入的收集对象
             if 'objects_excel_file' in request.files:
                 file = request.files.get('objects_excel_file')
                 if file and file.filename and file.filename.endswith(('.xls', '.xlsx')):
@@ -324,7 +427,8 @@ def register_routes(app):
             
             flash('收集主题创建成功', 'success')
             return redirect(url_for('admin_dashboard'))
-        return render_template('theme_create.html')
+        targets = CollectionTarget.query.order_by(CollectionTarget.name).all()
+        return render_template('theme_create.html', targets=targets)
 
     @app.route('/admin/theme/<int:theme_id>/objects', methods=['GET', 'POST'])
     @login_required

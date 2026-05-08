@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}用户账号管理{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <div class="admin-header">
+        <div class="admin-header-title">
+            <h2><i class="fas fa-user-shield"></i> 用户账号管理</h2>
+        </div>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-small">
+                <i class="fas fa-arrow-left"></i> 返回后台
+            </a>
+        </div>
+    </div>
+
+    <div class="admin-section-title">
+        <div class="section-header-tech">
+            <div class="tech-icon"><i class="fas fa-user-plus"></i></div>
+            <h3>创建用户账号</h3>
+            <div class="tech-line"></div>
+        </div>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">
+        <i class="fas fa-info-circle"></i> 填写收集对象名称（如人员姓名），若该名称已存在则自动关联；若不存在则自动创建并关联。
+    </p>
+    <form method="POST" class="user-create-form" style="margin-bottom: 32px;">
+        <input type="hidden" name="add_user" value="1">
+        <div class="form-row">
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> 登录用户名 *</label>
+                <input type="text" name="new_username" required placeholder="用于登录的账号名">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> 密码 *</label>
+                <input type="password" name="new_password" required placeholder="至少6位" minlength="6">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> 确认密码 *</label>
+                <input type="password" name="confirm_password" required placeholder="再次输入密码" minlength="6">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-users"></i> 收集对象名称 *</label>
+                <input type="text" name="target_name" required placeholder="填写人员姓名，自动创建或关联">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-plus"></i> 创建用户
+        </button>
+    </form>
+
+    <div class="admin-section-title">
+        <div class="section-header-tech">
+            <div class="tech-icon"><i class="fas fa-list"></i></div>
+            <h3>用户账号列表</h3>
+            <div class="tech-line"></div>
+        </div>
+    </div>
+
+    {% if users %}
+    <div class="users-table-wrap">
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>登录用户名</th>
+                    <th>收集对象（人员）</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.target.name }}</td>
+                    <td>
+                        <div class="user-actions">
+                            <button type="button" class="btn btn-warning btn-small" onclick="showResetForm({{ user.id }}, '{{ user.username }}')">
+                                <i class="fas fa-key"></i> 重置密码
+                            </button>
+                            <form method="POST" class="inline-form" onsubmit="return confirm('确定删除用户 {{ user.username }}？删除后该用户无法再登录。')">
+                                <input type="hidden" name="delete_user" value="1">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-danger btn-small">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </form>
+                        </div>
+                        <form method="POST" id="reset-form-{{ user.id }}" class="reset-form" style="display:none; margin-top: 8px;">
+                            <input type="hidden" name="reset_user_password" value="1">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <div class="reset-row">
+                                <input type="password" name="new_password" required placeholder="新密码（至少6位）" minlength="6">
+                                <button type="submit" class="btn btn-primary btn-small">确认重置</button>
+                                <button type="button" class="btn btn-secondary btn-small" onclick="hideResetForm({{ user.id }})">取消</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+        <div class="empty-icon"><i class="fas fa-user-shield"></i></div>
+        <p>暂无用户账号</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function showResetForm(userId, username) {
+    var form = document.getElementById('reset-form-' + userId);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function hideResetForm(userId) {
+    document.getElementById('reset-form-' + userId).style.display = 'none';
+}
+</script>
+{% endblock %}

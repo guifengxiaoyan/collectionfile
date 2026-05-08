@@ -13,7 +13,8 @@ def create_app():
     
     db.init_app(app)
     login_manager.init_app(app)
-    login_manager.login_view = 'admin_login'
+    login_manager.login_view = 'user_login'
+    login_manager.login_message = '请先登录'
     
     from routes import register_routes
     register_routes(app)

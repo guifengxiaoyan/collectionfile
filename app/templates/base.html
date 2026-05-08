@@ -24,6 +24,24 @@
             <span class="deco-dot"></span>
             <span class="deco-dot"></span>
         </div>
+        <div class="header-user">
+            {% if current_user.is_authenticated %}
+                {% if current_user.__class__.__name__ == 'Admin' %}
+                <a href="{{ url_for('admin_dashboard') }}" class="header-user-link">
+                    <i class="fas fa-user-shield"></i> 后台管理
+                </a>
+                {% else %}
+                <span class="header-username"><i class="fas fa-user"></i> {{ current_user.username }}</span>
+                <a href="{{ url_for('user_logout') }}" class="header-user-link">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </a>
+                {% endif %}
+            {% else %}
+                <a href="{{ url_for('user_login') }}" class="header-user-link">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </a>
+            {% endif %}
+        </div>
     </header>
     
     <main>

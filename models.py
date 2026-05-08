@@ -21,9 +21,33 @@ class Admin(db.Model, UserMixin):
         from werkzeug.security import check_password_hash
         return check_password_hash(self.password_hash, password)
 
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    target_id = db.Column(db.Integer, db.ForeignKey('collection_target.id'), nullable=False)
+    target = db.relationship('CollectionTarget', backref=db.backref('users', lazy=True))
+
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
+
+class CollectionTarget(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=beijing_now)
+
 @login_manager.user_loader
 def load_user(user_id):
-    return Admin.query.get(int(user_id))
+    admin = Admin.query.get(int(user_id))
+    if admin:
+        return admin
+    return User.query.get(int(user_id))
 
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,8 +87,10 @@ class CollectionObject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     theme_id = db.Column(db.Integer, db.ForeignKey('collection_theme.id'), nullable=False)
+    target_id = db.Column(db.Integer, db.ForeignKey('collection_target.id'), nullable=True)
     is_completed = db.Column(db.Boolean, default=False)
     completed_at = db.Column(db.DateTime)
+    target = db.relationship('CollectionTarget', backref=db.backref('objects', lazy=True))
     attachments = db.relationship('Attachment', backref='collection_object', lazy=True, cascade='all, delete-orphan')
 
 class Attachment(db.Model):
